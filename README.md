@@ -22,10 +22,12 @@
 ### Step 1: Fork the Repository
 Click the "Fork" button in the top-right corner to copy the project to your GitHub account.
 
-### Step 2: Create Event File
+### Step 2: Add Event Image
+Upload the event image to the `public/images/` directory. Recommended size: 400×225 pixels. Use a descriptive filename based on the event name, e.g., `eth-vietnam-2025.png`
+
+### Step 3: Create Event File and Fill Information
 Create a new `.md` file in the `src/content/events/` directory. Use a descriptive filename based on the event name, e.g., `eth-vietnam-2025.md`
 
-### Step 3: Fill Event Information
 Use the following template to fill in event details:
 
 ```yaml
@@ -36,17 +38,14 @@ location:
   city: "City Name"
   country: "Country Name"
 url: "https://event-website-link"
-image: "/images/event-image.png"
+image: "/images/event-image.png"  # Use the image file you uploaded in Step 2
 featured: true
 eventType: ["AI", "Web3.0"]  # Options: AI, Big Data, Cloud, Fintech, Gaming, IoT, Web3.0
 region: "Asia"               # Options: Americas, Asia, Europe, Other
 ---
 ```
 
-### Step 4: Add Event Image (Optional)
-If you have an event image, place it in the `public/images/` directory. Recommended size: 400×225 pixels.
-
-### Step 5: Submit Pull Request
+### Step 4: Submit Pull Request
 1. Commit your changes to your forked repository
 2. Create a Pull Request to the main repository
 3. Wait for review and merge
