@@ -1,0 +1,39 @@
+---
+import { getCollection } from 'astro:content';
+
+let events = [];
+let error = null;
+
+try {
+  events = await getCollection('events');
+  console.log('Events loaded:', events.length);
+} catch (e) {
+  error = e.message;
+  console.error('Error loading events:', e);
+}
+---
+
+<html>
+<head>
+  <title>Debug Events Collection</title>
+</head>
+<body>
+  <h1>Debug Events Collection</h1>
+  
+  {error ? (
+    <div style="color: red;">
+      <h2>Error:</h2>
+      <p>{error}</p>
+    </div>
+  ) : (
+    <div>
+      <h2>Events loaded: {events.length}</h2>
+      <ul>
+        {events.map(event => (
+          <li>{event.data.title} - {event.data.eventType.join(', ')}</li>
+        ))}
+      </ul>
+    </div>
+  )}
+</body>
+</html>

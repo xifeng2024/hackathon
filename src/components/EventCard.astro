@@ -1,0 +1,231 @@
+---
+// src/components/EventCard.astro
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+  event: CollectionEntry<'events'>;
+}
+
+const { event } = Astro.props;
+
+// 安全获取事件数据，提供默认值
+let title, startDate, location, image, featured, eventType, region, category, url;
+
+try {
+  const data = event.data || {};
+  
+  title = data.title || 'Untitled Event';
+  startDate = data.startDate ? new Date(data.startDate) : new Date();
+  location = data.location || { city: 'Unknown', country: 'Unknown' };
+  image = data.image || '/images/ai-event.png';
+  featured = data.featured || false;
+  eventType = Array.isArray(data.eventType) ? data.eventType : ['General'];
+  region = data.region || 'Unknown';
+  category = data.category || 'Event';
+  url = data.url || '#'; // 添加 URL 字段
+  
+  // 验证日期有效性
+  if (isNaN(startDate.getTime())) {
+    startDate = new Date();
+    console.warn(`Invalid date for event ${event.id}, using current date`);
+  }
+  
+  // 确保 location 是对象
+  if (typeof location === 'string') {
+    location = { city: location, country: 'Unknown' };
+  } else if (!location.city) {
+    location.city = 'Unknown';
+  }
+  
+} catch (error) {
+  console.error(`Error processing event data for ${event.id}:`, error);
+  
+  // 提供完全的默认值
+  title = 'Error Loading Event';
+  startDate = new Date();
+  location = { city: 'Unknown', country: 'Unknown' };
+  image = '/images/ai-event.png';
+  featured = false;
+  eventType = ['General'];
+  region = 'Unknown';
+  category = 'Event';
+  url = '#';
+}
+
+const formatDate = (date) => {
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(date);
+  } catch (error) {
+    console.warn('Error formatting date:', error);
+    return 'Invalid Date';
+  }
+};
+
+// 处理点击事件的函数
+const handleClick = () => {
+  if (url && url !== '#') {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+};
+---
+<div class="event-card">
+  {featured && <div class="featured-badge">FEATURED</div>}
+  
+  <div class="event-image clickable" onclick={`window.open('${url}', '_blank', 'noopener,noreferrer')`}>
+    <img 
+      src={image} 
+      alt={title}
+      onerror="this.src='/images/ai-event.png'"
+    />
+  </div>
+  
+  <div class="event-content">
+    <h3 class="event-title clickable" onclick={`window.open('${url}', '_blank', 'noopener,noreferrer')`}>
+      {title}
+    </h3>
+    
+    <!-- 第二行：时间和城市 -->
+    <div class="event-time-location">
+      <span class="event-date">{formatDate(startDate)}</span>
+      <span class="event-location">{location.city}</span>
+    </div>
+    
+    <!-- 第三行：分类和地区 -->
+    <div class="event-tags-region">
+      {eventType.map(type => (
+        <span class="event-type-tag">{type}</span>
+      ))}
+      <span class="region-tag">{region}</span>
+    </div>
+  </div>
+</div>
+
+<style>
+  .event-card {
+    position: relative;
+    background-color: var(--yt-light-grey);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform 0.2s;
+  }
+  
+  .event-card:hover {
+    transform: translateY(-2px);
+  }
+  
+  .featured-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background-color: #ff6b35;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    z-index: 2;
+  }
+  
+  .event-image {
+    position: relative;
+    width: 100%;
+    height: 180px;
+    overflow: hidden;
+  }
+  
+  .event-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  /* 可点击元素的样式 */
+  .clickable {
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+  }
+  
+  .clickable:hover {
+    opacity: 0.8;
+  }
+  
+  .event-image.clickable:hover {
+    opacity: 0.9;
+  }
+  
+  .event-title.clickable:hover {
+    color: #1976d2;
+    text-decoration: underline;
+  }
+  
+  .video-duration {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+  }
+  
+  .event-content {
+    padding: 16px;
+  }
+  
+  .event-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--yt-text-primary);
+    margin: 0 0 8px 0;
+    line-height: 1.3;
+  }
+  
+  /* 第二行：时间和城市 */
+  .event-time-location {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  
+  .event-date {
+    font-size: 0.8rem;
+    color: var(--yt-text-secondary);
+  }
+  
+  .event-location {
+    font-size: 0.8rem;
+    color: var(--yt-text-secondary);
+  }
+  
+  /* 第三行：分类和地区 */
+  .event-tags-region {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .event-type-tag {
+    background-color: #1976d2;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 500;
+  }
+  
+  .region-tag {
+    background-color: #666;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 500;
+  }
+</style>

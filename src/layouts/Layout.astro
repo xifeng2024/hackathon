@@ -1,0 +1,71 @@
+---
+// src/layouts/Layout.astro
+import Header from '../components/Header.astro';
+import Sidebar from '../components/Sidebar.astro';
+
+interface Props {
+  title: string;
+}
+const { title } = Astro.props;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="description" content="An open-source project that collects global hackathon and tech conference information" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+  </head>
+  <body>
+    <Header />
+    <div class="main-container">
+      <Sidebar />
+      <div class="content-wrapper">
+        <main class="content-area">
+          <slot />
+        </main>
+      </div>
+    </div>
+  </body>
+</html>
+
+<style is:global>
+  @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+  /* Define our YouTube color variables */
+  :root {
+    --yt-black: #0f0f0f;         /* Main background */
+    --yt-dark-grey-1: #212121;  /* Header/Sidebar background */
+    --yt-dark-grey-2: #282828;  /* Card background */
+    --yt-light-grey: #3f3f3f;   /* Border/button background */
+    --yt-text-primary: #f1f1f1;  /* Primary text */
+    --yt-text-secondary: #aaa;  /* Secondary text (like dates) */
+  }
+
+  html {
+    font-family: 'Roboto', sans-serif;
+  }
+
+  body {
+    background-color: var(--yt-black);
+    color: var(--yt-text-primary);
+    margin: 0;
+  }
+  
+  .content-wrapper {
+    margin-left: 198px;
+    padding-top: 20px;
+    padding-left: 15px;
+    position: relative;
+  }
+
+  .content-area {
+    padding: 24px;
+    position: relative;
+    z-index: 1; /* 确保在筛选器下方 */
+    /* 确保内容不会滑到固定元素上方 */
+    isolation: isolate;
+  }
+</style>

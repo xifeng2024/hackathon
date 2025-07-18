@@ -1,0 +1,270 @@
+---
+// src/pages/[...filters].astro
+import { getCollection } from 'astro:content';
+import Layout from '../layouts/Layout.astro';
+import EventCard from '../components/EventCard.astro';
+import MonthFilter from '../components/MonthFilter.astro';
+
+// 安全加载事件数据，过滤掉有问题的文件
+async function loadEventsWithErrorHandling() {
+  try {
+    const allEvents = await getCollection('events');
+    const validEvents = [];
+    
+    for (const event of allEvents) {
+      try {
+        // 验证必要字段是否存在
+        if (event.data && 
+            event.data.title && 
+            event.data.startDate && 
+            event.data.eventType && 
+            Array.isArray(event.data.eventType)) {
+          
+          // 验证日期格式
+          const date = new Date(event.data.startDate);
+          if (!isNaN(date.getTime())) {
+            validEvents.push(event);
+          } else {
+            console.warn(`Invalid date in event: ${event.id}`);
+          }
+        } else {
+          console.warn(`Missing required fields in event: ${event.id}`);
+        }
+      } catch (error) {
+        console.warn(`Error processing event ${event.id}:`, error);
+      }
+    }
+    
+    return validEvents;
+  } catch (error) {
+    console.error('Error loading events collection:', error);
+    return [];
+  }
+}
+
+export async function getStaticPaths() {
+  try {
+    // 定义所有需要的事件类型路径（与 Sidebar 中的链接对应）
+    const eventTypes = [
+      'ai',
+      'bigdata',
+      'cloud', 
+      'fintech',
+      'gaming',
+      'iot',
+      'web30'
+    ];
+    
+    const paths = [];
+    
+    // 1. 为每个eventType创建单独的路径
+    eventTypes.forEach(eventType => {
+      paths.push({
+        params: { filters: eventType },
+        props: { eventType, month: null, featured: false }
+      });
+    });
+    
+    // 2. 为featured创建路径
+    paths.push({
+      params: { filters: 'featured' },
+      props: { eventType: null, month: null, featured: true }
+    });
+    
+    // 3. 为每个月份创建单独的路径
+    for (let month = 1; month <= 12; month++) {
+      paths.push({
+        params: { filters: `month/${month}` },
+        props: { eventType: null, month, featured: false }
+      });
+    }
+    
+    // 4. 为featured和月份组合创建路径
+    for (let month = 1; month <= 12; month++) {
+      paths.push({
+        params: { filters: `featured/month/${month}` },
+        props: { eventType: null, month, featured: true }
+      });
+    }
+    
+    // 5. 为每个eventType和月份组合创建路径
+    eventTypes.forEach(eventType => {
+      for (let month = 1; month <= 12; month++) {
+        paths.push({
+          params: { filters: `${eventType}/month/${month}` },
+          props: { eventType, month, featured: false }
+        });
+      }
+    });
+    
+    console.log('Generated paths count:', paths.length);
+    console.log('Sample paths:', paths.slice(0, 10).map(p => p.params.filters));
+    return paths;
+  } catch (error) {
+    console.error('Error in getStaticPaths:', error);
+    return [];
+  }
+}
+
+const { eventType, month, featured } = Astro.props;
+const allEvents = await loadEventsWithErrorHandling();
+
+// 根据eventType、month和featured筛选事件
+let filteredEvents = allEvents;
+
+try {
+  // 首先根据featured状态筛选
+  if (featured) {
+    filteredEvents = filteredEvents.filter(event => {
+      try {
+        return event.data && event.data.featured === true;
+      } catch (error) {
+        console.warn(`Error checking featured status for ${event.id}:`, error);
+        return false;
+      }
+    });
+  }
+  
+  // 然后根据eventType筛选
+  if (eventType) {
+    filteredEvents = filteredEvents.filter(event => {
+      try {
+        if (!event.data.eventType || !Array.isArray(event.data.eventType)) {
+          return false;
+        }
+        
+        return event.data.eventType.some(type => {
+          const normalizedEventType = type.toLowerCase().replace(/\s+/g, '').replace(/\./g, '');
+          const normalizedFilterType = eventType.toLowerCase().replace(/\s+/g, '').replace(/\./g, '');
+          
+          // 处理特殊映射
+          if (normalizedFilterType === 'bigdata' && normalizedEventType === 'bigdata') return true;
+          if (normalizedFilterType === 'bigdata' && type.toLowerCase() === 'big data') return true;
+          if (normalizedFilterType === 'web30' && normalizedEventType === 'web30') return true;
+          if (normalizedFilterType === 'web30' && type.toLowerCase() === 'web3.0') return true;
+          
+          return normalizedEventType === normalizedFilterType;
+        });
+      } catch (error) {
+        console.warn(`Error filtering by eventType for ${event.id}:`, error);
+        return false;
+      }
+    });
+  }
+
+  // 最后根据月份筛选
+  if (month) {
+    filteredEvents = filteredEvents.filter(event => {
+      try {
+        const eventDate = new Date(event.data.startDate);
+        return !isNaN(eventDate.getTime()) && eventDate.getMonth() + 1 === month;
+      } catch (error) {
+        console.warn(`Error filtering by month for ${event.id}:`, error);
+        return false;
+      }
+    });
+  }
+} catch (error) {
+  console.error('Error filtering events:', error);
+  filteredEvents = [];
+}
+
+// 按时间排序：离现在越近的排在越前面
+const sortedEvents = filteredEvents.sort((a, b) => {
+  try {
+    const dateA = new Date(a.data.startDate);
+    const dateB = new Date(b.data.startDate);
+    const now = new Date();
+    
+    // 验证日期有效性
+    if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
+      return 0;
+    }
+    
+    // 计算与当前时间的距离（绝对值）
+    const diffA = Math.abs(dateA.getTime() - now.getTime());
+    const diffB = Math.abs(dateB.getTime() - now.getTime());
+    
+    return diffA - diffB;
+  } catch (error) {
+    console.warn('Error sorting events:', error);
+    return 0;
+  }
+});
+
+// eventType名称映射
+const eventTypeNames = {
+  'ai': 'AI & Machine Learning',
+  'big data': 'Big Data & Analytics',
+  'bigdata': 'Big Data & Analytics',
+  'cloud': 'Cloud Computing',
+  'fintech': 'Fintech',
+  'gaming': 'Gaming & VR',
+  'iot': 'IoT & Hardware',
+  'web3.0': 'Web3.0 & Blockchain',
+  'web30': 'Web3.0 & Blockchain'
+};
+
+const monthNames = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+let title = 'Events - Hackathon.chat';
+try {
+  if (featured && month) {
+    title = `Featured Events in ${monthNames[month]} - Hackathon.chat`;
+  } else if (featured) {
+    title = `Featured Events - Hackathon.chat`;
+  } else if (eventType && month) {
+    const displayName = eventTypeNames[eventType] || eventType;
+    title = `${displayName} Events in ${monthNames[month]} - Hackathon.chat`;
+  } else if (eventType) {
+    const displayName = eventTypeNames[eventType] || eventType;
+    title = `${displayName} Events - Hackathon.chat`;
+  } else if (month) {
+    title = `${monthNames[month]} Events - Hackathon.chat`;
+  }
+} catch (error) {
+  console.warn('Error generating title:', error);
+}
+
+// 确定当前分类，用于传递给MonthFilter
+const currentCategory = featured ? 'featured' : eventType;
+---
+<Layout title={title}>
+  <MonthFilter currentCategory={currentCategory} currentMonth={month} />
+  <div class="events-grid">
+    {sortedEvents.map(event => {
+      try {
+        return <EventCard event={event} />;
+      } catch (error) {
+        console.warn(`Error rendering event card for ${event.id}:`, error);
+        return null;
+      }
+    })}
+  </div>
+  {sortedEvents.length === 0 && (
+    <div class="no-events">
+      <p>No events found for the selected criteria.</p>
+    </div>
+  )}
+</Layout>
+
+<style>
+  .events-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
+    margin-top: 40px;
+    position: relative;
+  }
+
+  .no-events {
+    text-align: center;
+    margin-top: 60px;
+    color: #666;
+  }
+
+  .no-events p {
+    font-size: 18px;
+    margin: 0;
+  }
+</style>

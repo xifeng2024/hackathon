@@ -1,5 +1,5 @@
 ---
-// src/pages/index.astro
+// src/pages/featured.astro
 import { getCollection } from 'astro:content';
 import Layout from '../layouts/Layout.astro';
 import EventCard from '../components/EventCard.astro';
@@ -44,12 +44,27 @@ async function loadEventsWithErrorHandling() {
 
 const allEvents = await loadEventsWithErrorHandling();
 
+// 筛选特色事件
+const featuredEvents = allEvents.filter(event => {
+  try {
+    return event.data && event.data.featured === true;
+  } catch (error) {
+    console.warn(`Error checking featured status for ${event.id}:`, error);
+    return false;
+  }
+});
+
 // 按时间排序：离现在越近的排在越前面
-const sortedEvents = allEvents.sort((a, b) => {
+const sortedFeaturedEvents = featuredEvents.sort((a, b) => {
   try {
     const dateA = new Date(a.data.startDate);
     const dateB = new Date(b.data.startDate);
     const now = new Date();
+    
+    // 验证日期有效性
+    if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
+      return 0;
+    }
     
     // 计算与当前时间的距离（绝对值）
     const diffA = Math.abs(dateA.getTime() - now.getTime());
@@ -57,50 +72,31 @@ const sortedEvents = allEvents.sort((a, b) => {
     
     return diffA - diffB;
   } catch (error) {
-    console.warn('Error sorting events:', error);
+    console.warn('Error sorting featured events:', error);
     return 0;
   }
 });
 ---
-<Layout title="Hackathon.chat - Global Tech Events">
-  <MonthFilter currentCategory={null} currentMonth={null} />
+<Layout title="Featured Events - Hackathon.chat">
+  <MonthFilter currentCategory="featured" currentMonth={null} />
   <div class="events-grid">
-    {sortedEvents.map(event => {
+    {sortedFeaturedEvents.map(event => {
       try {
         return <EventCard event={event} />;
       } catch (error) {
-        console.warn(`Error rendering event card for ${event.id}:`, error);
+        console.warn(`Error rendering featured event card for ${event.id}:`, error);
         return null;
       }
     })}
   </div>
-  {sortedEvents.length === 0 && (
+  {sortedFeaturedEvents.length === 0 && (
     <div class="no-events">
-      <p>No events available at the moment.</p>
+      <p>No featured events available at the moment.</p>
     </div>
   )}
 </Layout>
 
 <style>
-  .banner {
-    position: relative;
-    height: 300px;
-    margin-bottom: 24px;
-    border-radius: 12px;
-    overflow: hidden;
-  }
-  .banner-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  .banner-text {
-    position: absolute;
-    bottom: 20px;
-    left: 20px;
-    color: white;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-  }
   .events-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
